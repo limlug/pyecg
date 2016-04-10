@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
-
+"""
+testing autodoc - this should be first line in doc
+"""
 import random
 import sys
 import struct
@@ -57,44 +59,43 @@ class ThreadSample(QtCore.QThread):
         # Initialisiere Thread
         super(ThreadSample, self).__init__(parent)
         # Öffne Socket zu Bluetooth
-        self.ser = serial.Serial(port='/dev/rfcomm3', baudrate=19200)  # (port='/dev/ttyUSB0', baudrate=19200)#(port='/dev/rfcomm0',baudrate=19200,)
-        self.ser.isOpen()
-        self.ser.flushInput()
+        self.serial_interface = serial.Serial(port='/dev/rfcomm3', baudrate=19200)  # (port='/dev/ttyUSB0', baudrate=19200)#(port='/dev/rfcomm0',baudrate=19200,)
+        self.serial_interface.isOpen()
+        self.serial_interface.flushInput()
         # Setze Initialwerte auf 0
-        self.sam = [[0] * 2000, [0] * 2000]
-        self.pos = 0
+        self.sample_array = [[0] * 2000]
+        self.position_sample_array = 0
 
-    def starttran(self):
-        self.ser.write(b'2')
+    def start_transmitting_data(self):
+        self.serial_interface.write(b'2')
 
-    def stoptran(self):
-        self.ser.write(b'5')
+    def stop_transmitting_data(self):
+        self.serial_interface.write(b'5')
 
     def run(self):
         out = ''
-        if self.ser.inWaiting() > 0:
-            # bi = self.ser.read(1)
+        if self.serial_interface.inWaiting() > 0:
             # Finde Syncbyte
-            wbytes = self.ser.inWaiting()
-            read_byte = self.ser.read(wbytes)
-            self.ser.flushInput()
-            for i in range(len(read_byte)):
-                if binascii.hexlify(read_byte[i]) == "ff":
+            number_waiting_bytes = self.serial_interface.inWaiting()
+            read_bytes = self.ser.read(number_waiting_bytes)
+            self.serial_interface.flushInput()
+            for read_bytes_iter in range(len(read_bytes)):
+                if binascii.hexlify(read_bytes[read_bytes_iter]) == "ff":
                     try:
-                        fields = struct.unpack('BB', read_byte[i + 1:i + 3])
+                        byte_fields = struct.unpack('BB', read_bytes[read_bytes_iter + 1:read_bytes_iter + 3])
                     except Exception as e:
                         break
-                    out = fields[0] << 8
-                    out += fields[1]
-                    if out > 1024:
+                    sample_entry_uint = byte_fields[0] << 8
+                    sample_entry_uint += byte_fields[1]
+                    if sample_entry_uint > 1024:
                         break
-                    self.sam[0][self.pos] = out
-                    if(self.pos == 1999):
-                        self.finalSample.emit(self.sam[0])
-                        self.pos = 0
+                    self.sample_array[self.position_sample_array] = sample_entry_uint
+                    if(self.position_sample_array == 1999):
+                        self.finalSample.emit(self.sample_array)
+                        self.position_sample_array = 0
                     else:
-                        self.pos += 1
-        self.newSample.emit(self.sam)
+                        self.position_sample_array += 1
+        self.newSample.emit(self.sample_array)
 
 
 class Main(QMainWindow, Ui_MainWindow):

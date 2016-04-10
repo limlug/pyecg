@@ -1,0 +1,1 @@
+Search.setIndex({envversion:47,filenames:["index"],objects:{},objnames:{},objtypes:{},terms:{content:0,modulindex:0,stichwortverzeichnis:0,such:0},titles:["Welcome to pyECG&#8217;s documentation!"],titleterms:{and:0,documentation:0,indic:0,pyecg:0,tabl:0,welcom:0}})
