@@ -13,15 +13,16 @@ import time
 import binascii
 import ctypes
 import scipy.fftpack
-import matplotlib
-matplotlib.use('TkAgg')
-from matplotlib.backends.backend_qt4agg import (FigureCanvasQTAgg, NavigationToolbar2QT)
-from matplotlib.figure import Figure
 from PyQt4 import QtGui, QtCore, uic
 import peakutils
 from subprocess import PIPE, Popen
 import shlex
 import os.path
+from matplotlib.backends.backend_qt4agg import (FigureCanvasQTAgg, NavigationToolbar2QT)
+from matplotlib.figure import Figure
+import matplotlib
+matplotlib.use('TkAgg')
+
 
 Ui_MainWindow, QMainWindow = uic.loadUiType('ecgmonitor.ui')
 
@@ -51,13 +52,13 @@ class MatplotlibWidget(QtGui.QWidget):
         self.layoutVertical.addWidget(self.canvas)
 
 
-class ThreadSample(QtCore.QThread):
+class SampleCollectorThread(QtCore.QThread):
     newSample = QtCore.pyqtSignal(list)
     finalSample = QtCore.pyqtSignal(list)
 
     def __init__(self, parent=None):
         # Initialisiere Thread
-        super(ThreadSample, self).__init__(parent)
+        super(SampleCollectorThread, self).__init__(parent)
         # Öffne Socket zu Bluetooth
         self.serial_interface = serial.Serial(port='/dev/rfcomm3', baudrate=19200)  # (port='/dev/ttyUSB0', baudrate=19200)#(port='/dev/rfcomm0',baudrate=19200,)
         self.serial_interface.isOpen()
