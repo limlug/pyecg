@@ -99,15 +99,15 @@ class SampleCollectorThread(QtCore.QThread):
         self.newSample.emit(self.sample_array)
 
 
-class Main(QMainWindow, Ui_MainWindow):
+class EcgFrontend(QMainWindow, Ui_MainWindow):
     def __init__(self, ):
-        super(Main, self).__init__()
-        self.p = 0
-        self.mWd = MyWindow(self)
-        self.mplfigure = self.mWd
+        super(EcgFrontend, self).__init__()
+        self.process_command_bluetooth_socket = 0
+        self.ecgmainwidget = EcgMainWidget(self)
+        self.mplfigure = self.ecgmainwidget
         self.mplfigure.resize(1200, 400)
         self.setupUi(self)
-        self.mWd.qrs_pulse.connect(self.on_qrs_pulse)
+        self.ecgmainwidget.qrs_pulse.connect(self.on_qrs_pulse)
         self.actionBeenden.setShortcut('Ctrl+Q')
         self.actionBeenden.setStatusTip('Exit application')
         self.actionBeenden.triggered.connect(self.close)
@@ -126,49 +126,49 @@ class Main(QMainWindow, Ui_MainWindow):
 
     def pause_draw(self):
         if (self.actionDaten_Transfer_starten.isChecked()):
-            self.mWd.dra = False
+            self.ecgmainwidget.draw_data = False
         else:
-            self.mWd.dra = True
+            self.ecgmainwidget.draw_data = True
 
     def start_reading(self):
-        self.mWd.sdata = np.zeros(2000)
+        self.ecgmainwidget.sdata = np.zeros(2000)
         self.rtimer = QtCore.QTimer()
         self.rtimer.setSingleShot(True)
         self.rtimer.timeout.connect(lambda: self.collect_data())
         self.rtimer.start(60000)
-        self.mWd.scrape = True
+        self.ecgmainwidget.scrape = True
 
     def collect_data(self):
-        self.mWd.scrape = False
-        self.mWd.draw_old = True
+        self.ecgmainwidget.scrape = False
+        self.ecgmainwidget.draw_old = True
 
     def start_data_transfer(self):
         if (self.actionDaten_Transfer_starten.isChecked()):
-            self.mWd.threadSample.starttran()
+            self.ecgmainwidget.samplecollectorthread.start_transmitting_data()
         else:
-            self.mWd.threadSample.stoptran()
+            self.ecgmainwidget.samplecollectorthread.stop_transmitting_data()
 
     def start_bluetooth(self):
         if (self.actionBluetooth_Starte.isChecked()):
             command_line = "sudo rfcomm connect /dev/rfcomm3 00:06:66:4C:CB:B7 1 &"
             args = shlex.split(command_line)
-            self.p = Popen(args, stdin=PIPE, stdout=PIPE)
+            self.process_command_bluetooth_socket = Popen(args, stdin=PIPE, stdout=PIPE)
             while not os.path.exists("/dev/rfcomm3"):
                 pass
-            self.mWd.init_thread()
+            self.ecgmainwidget.init_thread()
             self.eventLog.append("Startup Completed.")
         else:
             self.stop_bluetooth()
 
     def stop_bluetooth(self):
-        self.mWd.destroy_thread()
-        self.p.kill()
+        self.ecgmainwidget.destroy_thread()
+        self.process_command_bluetooth_socket.kill()
         command_line = "sudo rfcomm release /dev/rfcomm3"
         args = shlex.split(command_line)
-        self.p = Popen(args, stdin=PIPE, stdout=PIPE)
+        self.process_command_bluetooth_socket = Popen(args, stdin=PIPE, stdout=PIPE)
 
     def closeEvent(self, event):
-        self.mWd.threadSample.stoptran()
+        self.ecgmainwidget.samplecollectorthread.stoptran()
         self.stop_bluetooth()
         event.accept()
 
@@ -181,11 +181,11 @@ class Main(QMainWindow, Ui_MainWindow):
             pass
 
 
-class MyWindow(QtGui.QWidget):
+class EcgMainWidget(QtGui.QWidget):
     qrs_pulse = QtCore.pyqtSignal(list)
 
     def __init__(self, parent=None):
-        super(MyWindow, self).__init__(parent)
+        super(EcgMainWidget, self).__init__(parent)
         self.matplotlibWidget = MatplotlibWidget(self)
         # Definiere Layout
         self.layoutVertical = QtGui.QVBoxLayout(self)
@@ -194,29 +194,29 @@ class MyWindow(QtGui.QWidget):
         # Erzeuge Thread
 
     def init_thread(self):
-        self.threadSample = ThreadSample(self)
+        self.samplecollectorthread = SampleCollectorThread(self)
         # Verbinde Signal zu Threa
         self.sdata = np.array([])
         self.sfdata = np.zeros(2000)
-        self.threadSample.newSample.connect(self.on_threadSample_newSample)
-        self.threadSample.finalSample.connect(self.on_threadSample_finalSample)
-        self.line1, = self.matplotlibWidget.axis1.plot(self.threadSample.sam[0], '-', alpha=0.8, color="red", markerfacecolor="red")
-        self.line2, = self.matplotlibWidget.axis2.plot(scipy.fftpack.fftfreq(np.array(self.threadSample.sam[0], dtype=np.uint16).size, d=float(1.0 / 1000.0)), abs(scipy.fftpack.fft(np.array(self.threadSample.sam[0], dtype=np.uint16))), 'x-', alpha=0.8, color="blue", markerfacecolor="blue")
+        self.samplecollectorthread.newSample.connect(self.on_SampleCollectorThread_newSample)
+        self.samplecollectorthread.finalSample.connect(self.on_SampleCollectorThread_finalSample)
+        self.line1, = self.matplotlibWidget.axis1.plot(self.samplecollectorthread.sample_array, '-', alpha=0.8, color="red", markerfacecolor="red")
+        self.line2, = self.matplotlibWidget.axis2.plot(scipy.fftpack.fftfreq(np.array(self.samplecollectorthread.sample_array, dtype=np.uint16).size, d=float(1.0 / 1000.0)), abs(scipy.fftpack.fft(np.array(self.samplecollectorthread.sample_array, dtype=np.uint16))), 'x-', alpha=0.8, color="blue", markerfacecolor="blue")
         self.line3, = self.matplotlibWidget.axis1.plot(self.sfdata, '-', alpha=0.8, color="blue", markerfacecolor="blue")
         # Initialisiere Timer
         self.qrs = []
-        self.dra = True
+        self.draw_data = True
         self.qrs_f = []
         self.pulse_arr = 0
         self.pulse_f = []
         self.draw_old = False
-        self.o_i = 0
+        self.old_data_iterator = 0
         self.do1 = np.array([])
         self.do2 = np.array([])
         self.scrape = False
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(False)
-        self.timer.timeout.connect(lambda: self.threadSample.start())
+        self.timer.timeout.connect(lambda: self.samplecollectorthread.start())
         # Setze Timer auf Laufe Nebenläufig Immer
         self.timer.start(0)
         self.pctimer = QtCore.QTimer()
@@ -225,7 +225,7 @@ class MyWindow(QtGui.QWidget):
         self.pctimer.start(5000)
 
     def destroy_thread(self):
-        del self.threadSample
+        del self.samplecollectorthread
         del self.line1
         del self.line2
         del self.qrs
@@ -276,7 +276,7 @@ class MyWindow(QtGui.QWidget):
         return sma
 
     @QtCore.pyqtSlot(list)
-    def on_threadSample_finalSample(self, sample, use_blit=True):
+    def on_SampleCollectorThread_finalSample(self, sample, use_blit=True):
         data = np.array(sample, dtype=np.uint16)
         y = self.butter_lowpass_filter(data)
         z = self.smooth(y)
@@ -296,8 +296,8 @@ class MyWindow(QtGui.QWidget):
                 continue
 
     @QtCore.pyqtSlot(list)
-    def on_threadSample_newSample(self, sample, use_blit=True):
-        if (self.dra):
+    def on_SampleCollectorThread_newSample(self, sample, use_blit=True):
+        if (self.draw_data):
             data = np.array(sample[0], dtype=np.uint16)
             self.do1 = data
         else:
@@ -309,15 +309,15 @@ class MyWindow(QtGui.QWidget):
         self.line1.set_ydata((z - 512) * 0.002929688)
         self.matplotlibWidget.axis1.draw_artist(self.line1)
         if (self.draw_old):
-            ug = self.o_i
-            og = self.o_i + 2000
+            ug = self.old_data_iterator
+            og = self.old_data_iterator + 2000
             self.sfdata = self.sdata[ug:og]
             self.line3.set_ydata(((self.sfdata) - 512) * 0.002929688)
             self.matplotlibWidget.axis1.draw_artist(self.line3)
-            if (self.o_i + 2000 > len(self.sdata)):
-                self.o_i = 0
+            if (self.old_data_iterator + 2000 > len(self.sdata)):
+                self.old_data_iterator = 0
             else:
-                self.o_i += 1
+                self.old_data_iterator += 1
         # Setze Daten
         self.line2.set_xdata(scipy.fftpack.fftfreq(z.size, d=float(1.0 / 1000.0)))
         self.line2.set_ydata(abs(scipy.fftpack.fft(z)))
