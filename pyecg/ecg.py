@@ -18,11 +18,10 @@ import peakutils
 from subprocess import PIPE, Popen
 import shlex
 import os.path
-from matplotlib.backends.backend_qt4agg import (FigureCanvasQTAgg, NavigationToolbar2QT)
-from matplotlib.figure import Figure
 import matplotlib
 matplotlib.use('TkAgg')
-
+from matplotlib.backends.backend_qt4agg import (FigureCanvasQTAgg, NavigationToolbar2QT)
+from matplotlib.figure import Figure
 
 Ui_MainWindow, QMainWindow = uic.loadUiType('ecgmonitor.ui')
 
@@ -333,7 +332,7 @@ if __name__ == "__main__":
     # Erzeuge Applikation
     app = QtGui.QApplication(sys.argv)
     app.setApplicationName('MedInfSignals')
-    main = Main()
+    main = EcgFrontend()
     main.resize(1400, 1000)
     main.show()
     sys.exit(app.exec_())
