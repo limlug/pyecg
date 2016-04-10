@@ -93,7 +93,7 @@ class ThreadSample(QtCore.QThread):
                         self.finalSample.emit(self.sam[0])
                         self.pos = 0
                     else:
-                        self.pos + =1
+                        self.pos += 1
         self.newSample.emit(self.sam)
 
 
