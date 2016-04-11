@@ -37,7 +37,7 @@ class MatplotlibWidget(QtGui.QWidget):
         #: Initialize Plots
         self.axis1 = self.figure.add_subplot(211)
         self.axis2 = self.figure.add_subplot(212)
-        self.axis1.set_autoscaley_on(False) #: Disable Auto scale
+        self.axis1.set_autoscaley_on(False)  #: Disable Auto scale
         self.axis1.set_xlim([0, 2000])
         self.axis1.set_ylim([-1.5, 1.5])
         self.axis2.set_autoscaley_on(False)
